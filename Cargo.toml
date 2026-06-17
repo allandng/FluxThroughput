@@ -1,0 +1,36 @@
+[package]
+name = "flux_throughput"
+version = "0.1.0"
+edition = "2021"
+description = "Lock-free, crash-safe, write-behind persistence pipeline that isolates a hot main loop from slow durable storage."
+license = "MIT OR Apache-2.0"
+
+# ZERO external dependencies — std only.
+[dependencies]
+
+[lib]
+name = "flux_throughput"
+path = "src/lib.rs"
+
+[[bin]]
+name = "demo"
+path = "src/bin/demo.rs"
+
+[[bin]]
+name = "crash_child"
+path = "src/bin/crash_child.rs"
+
+# Examples showing how a real cluster wires a backend into the PersistenceStore
+# seam. Both build & run OFFLINE with ZERO external dependencies (the redis
+# example abstracts the connection behind a local trait + in-memory fake).
+[[example]]
+name = "disk_kv_store"
+path = "examples/disk_kv_store.rs"
+
+[[example]]
+name = "redis_store"
+path = "examples/redis_store.rs"
+
+[profile.release]
+opt-level = 3
+lto = true

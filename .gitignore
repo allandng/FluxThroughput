@@ -1,0 +1,9 @@
+# Rust build artifacts
+/target
+
+# WAL segments written by the default config / demo / examples
+/flux-wal/
+
+# Backups & OS cruft
+**/*.rs.bk
+.DS_Store
