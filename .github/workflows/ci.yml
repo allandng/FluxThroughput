@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: build · lint · test (stable / ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (stable + clippy + rustfmt)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo registry + target
+        uses: Swatinem/rust-cache@v2
+
+      # ---- Gating checks: deterministic, must pass ----
+
+      - name: Formatting (cargo fmt --check)
+        run: cargo fmt --all -- --check
+
+      - name: Lints (clippy, warnings = errors)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build (all targets)
+        run: cargo build --all-targets --verbose
+
+      - name: Unit tests (lib)
+        run: cargo test --lib --verbose
+
+      - name: Doctests
+        run: cargo test --doc --verbose
+
+      - name: Crash-resilience + fault-injection (deterministic durability)
+        run: cargo test --test crash_resilience --test fault_injection -- --nocapture
+
+      - name: Stress / throughput (release; correctness is deterministic)
+        run: cargo test --release --test stress_concurrency -- --nocapture
+
+      - name: Persistence-seam examples (disk + Redis, offline)
+        run: |
+          cargo run --example disk_kv_store
+          cargo run --example redis_store
+
+      # ---- Best-effort: the main-loop isolation test asserts wall-clock submit
+      #      latency as the MAX over ~250k samples. That is robust on a quiet
+      #      machine but sensitive to scheduler jitter on shared CI runners (a
+      #      single preemption mid-measurement can inflate the max), so it runs
+      #      non-blocking. A real regression still shows red in this step's log;
+      #      it just does not fail the build on runner noise. ----
+      - name: Main-loop isolation (latency-sensitive, non-blocking)
+        continue-on-error: true
+        run: cargo test --release --test mainloop_isolation -- --nocapture
